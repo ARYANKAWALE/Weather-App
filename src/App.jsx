@@ -8,8 +8,9 @@ import { ThemeProvider, useTheme } from './context/ThemeContext'
 
 function WeatherApp() {
   const theme = useTheme();
-  const api_key = '3996c76607ab4954876150728251803'
-  const api_url = 'http://api.weatherapi.com/v1/forecast.json'
+  const api_key = import.meta.env.VITE_WEATHER_API_KEY || '3996c76607ab4954876150728251803'
+  const api_url = 'https://api.weatherapi.com/v1/forecast.json'
+  const cors_proxy = 'https://cors-anywhere.herokuapp.com/'
   const [city, setCity] = useState('')
   const [error, setError] = useState('')
   const [weatherData, setWeatherData] = useState(null)
@@ -32,16 +33,43 @@ function WeatherApp() {
     setLoading(true)
     setError('')
     try {
-      const response = await axios.get(`${api_url}?key=${api_key}&q=${query}&days=1`)
-      console.log('API Response:', {
-        condition: response.data.current.condition.text,
-        is_day: response.data.current.is_day,
-        localtime: response.data.location.localtime,
-        isNight: isNightTime(response.data.location.localtime)
-      });
-      setWeatherData(response.data)
+      // Try direct API call first
+      try {
+        const response = await axios.get(api_url, {
+          params: {
+            key: api_key,
+            q: query,
+            days: 1,
+            aqi: 'no'
+          }
+        });
+        setWeatherData(response.data);
+        return;
+      } catch (directError) {
+        console.log('Direct API call failed, trying with CORS proxy...');
+        // If direct call fails, try with CORS proxy
+        const response = await axios.get(`${cors_proxy}${api_url}`, {
+          params: {
+            key: api_key,
+            q: query,
+            days: 1,
+            aqi: 'no'
+          },
+          headers: {
+            'Origin': window.location.origin
+          }
+        });
+        setWeatherData(response.data);
+      }
     } catch (err) {
-      setError('City not found. Please try again.')
+      console.error('API Error:', err);
+      if (err.response?.status === 400) {
+        setError('City not found. Please try a different city name.')
+      } else if (err.response?.status === 403) {
+        setError('Access to weather data is restricted. Please try again later.')
+      } else {
+        setError('Unable to fetch weather data. Please try again.')
+      }
       setWeatherData(null)
     } finally {
       setLoading(false)
