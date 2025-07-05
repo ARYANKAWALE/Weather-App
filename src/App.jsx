@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { FaMapMarkerAlt, FaSearch, FaWind, FaTint, FaCloud, FaSun, FaExchangeAlt, FaMoon } from 'react-icons/fa'
+import { useState, useEffect, useRef } from 'react'
+import { FaMapMarkerAlt, FaSearch, FaWind, FaTint, FaCloud, FaSun, FaExchangeAlt, FaMoon, FaAccessibleIcon, FaAngleDoubleRight } from 'react-icons/fa'
 import HourlyForecast from './components/HourlyForecast'
 import Loading from './components/Loading'
 import VideoBackground from './components/VideoBackground'
@@ -12,10 +12,64 @@ function WeatherApp() {
   const api_url = 'https://api.weatherapi.com/v1/forecast.json'
   const cors_proxy = 'https://cors-anywhere.herokuapp.com/'
   const [city, setCity] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [error, setError] = useState('')
   const [weatherData, setWeatherData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [useCelsius, setUseCelsius] = useState(true)
+  const searchRef = useRef(null)
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Fetch suggestions
+  const fetchSuggestions = async (query) => {
+    if (!query.trim()) {
+      setSuggestions([])
+      return
+    }
+    try {
+      const response = await axios.get(`https://api.weatherapi.com/v1/search.json`, {
+        params: {
+          key: api_key,
+          q: query
+        }
+      })
+      setSuggestions(response.data)
+      setShowSuggestions(true)
+    } catch (err) {
+      console.error('Failed to fetch suggestions:', err)
+      setSuggestions([])
+    }
+  }
+
+  // Debounce search input
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (city.length >= 2) {
+        fetchSuggestions(city)
+      } else {
+        setSuggestions([])
+      }
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [city])
+
+  const handleSuggestionClick = (suggestion) => {
+    setCity(suggestion.name)
+    setShowSuggestions(false)
+    fetchData(suggestion.name)
+  }
 
   const isNightTime = (localtime) => {
     const date = new Date(localtime);
@@ -95,14 +149,8 @@ function WeatherApp() {
     }
   }
 
-  const handleKeyPress = (event) => {
-    if (event.key === 'Enter') {
-      fetchData(city)
-    }
-  }
-
   const convertTemp = (temp) => {
-    return useCelsius ? temp : (temp * 9/5) + 32
+    return useCelsius ? temp : (temp * 9 / 5) + 32
   }
 
   const toggleUnit = () => {
@@ -119,7 +167,7 @@ function WeatherApp() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      {weatherData && <VideoBackground 
+      {weatherData && <VideoBackground
         weatherCondition={weatherData.current.condition.text}
         isDay={!isNightTime(weatherData.location.localtime)}
       />}
@@ -127,16 +175,33 @@ function WeatherApp() {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex gap-2 flex-1">
-              <div className={`flex-1 flex items-center ${theme.input} rounded-lg px-4 py-2 backdrop-blur-sm`}>
-                <FaSearch className={theme.icon} />
-                <input
-                  type="text"
-                  placeholder="Enter City Name"
-                  onKeyUp={handleKeyPress}
-                  onChange={(e) => setCity(e.target.value)}
-                  value={city}
-                  className={`ml-2 w-full bg-transparent focus:outline-none ${theme.text} placeholder:${theme.textSecondary}`}
-                />
+              <div ref={searchRef} className="relative flex-1">
+                <div className={`flex items-center ${theme.input} rounded-lg px-4 py-2 backdrop-blur-sm`}>
+                  <FaSearch className={theme.icon} />
+                  <input
+                    type="text"
+                    placeholder="Enter City Name"
+                    onChange={(e) => setCity(e.target.value)}
+                    value={city}
+                    className={`ml-2 w-full bg-transparent focus:outline-none ${theme.text} placeholder:${theme.textSecondary}`}
+                  />
+                </div>
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute w-full mt-1 bg-black/80 backdrop-blur-md rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                    {suggestions.map((suggestion) => (
+                      <div
+                        key={`${suggestion.id}-${suggestion.name}`}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className={`px-4 py-2 cursor-pointer ${theme.text} hover:bg-white/10 transition-colors duration-200`}
+                      >
+                        <div className="font-medium">{suggestion.name}</div>
+                        <div className={`text-sm ${theme.textSecondary}`}>
+                          {suggestion.region && `${suggestion.region}, `}{suggestion.country}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <button
                 onClick={getCurruntLocation}
@@ -144,6 +209,13 @@ function WeatherApp() {
                 title="Get Current Location"
               >
                 <FaMapMarkerAlt className={theme.icon} />
+              </button>
+              <button 
+                onClick={() => fetchData(city)}
+                className={`px-4 py-2 ${theme.button} rounded-lg transition-colors duration-200 backdrop-blur-sm`}
+                title="Search"
+              >
+                <FaAngleDoubleRight className={theme.icon} />
               </button>
             </div>
           </div>
@@ -153,7 +225,7 @@ function WeatherApp() {
               {error}
             </p>
           )}
-          
+
           {loading ? (
             <Loading />
           ) : weatherData && (
@@ -161,6 +233,15 @@ function WeatherApp() {
               <div className="text-center">
                 <h2 className={`text-2xl font-bold ${theme.text}`}>{weatherData.location.name}</h2>
                 <p className={theme.textSecondary}>{weatherData.location.country}</p>
+                <p className={`mt-1 ${theme.textSecondary}`}>
+                  {new Date(weatherData.location.localtime).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    timeZone: weatherData.location.tz_id
+                  })}
+                </p>
               </div>
 
               <div className="flex items-center justify-center gap-4">
@@ -214,7 +295,11 @@ function WeatherApp() {
                 </div>
               </div>
 
-              <HourlyForecast weatherData={weatherData.forecast.forecastday[0].hour} theme={theme} />
+              <HourlyForecast
+                weatherData={weatherData.forecast.forecastday[0].hour}
+                theme={theme}
+                timezone={weatherData.location.tz_id}
+              />
             </div>
           )}
         </div>
