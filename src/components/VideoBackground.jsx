@@ -4,54 +4,54 @@ import lightningVideo from '../assets/images/videos/lightining.mp4';
 import rainVideo from '../assets/images/videos/Rain.mp4';
 import snowVideo from '../assets/images/videos/Snowfall.mp4';
 import nightVideo from '../assets/images/videos/Night.mp4';
+import partlyCloudyVideo from '../assets/images/videos/PartlyCloudy.mp4';
 
 const VideoBackground = ({ weatherCondition, isDay }) => {
     const getVideoSource = () => {
         const condition = weatherCondition?.toLowerCase() || '';
-        
-        // Detailed condition logging
-        console.log('VideoBackground Decision:', {
-            originalCondition: weatherCondition,
-            lowerCaseCondition: condition,
+
+        console.log('VideoBackground Props:', {
+            weatherCondition,
+            condition: condition,
             isDay: isDay,
-            isNight: !isDay,
-            containsClear: condition.includes('clear'),
-            containsSunny: condition.includes('sunny'),
-            containsCloud: condition.includes('cloud'),
-            shouldShowNight: !isDay && (condition.includes('clear') || condition.includes('sunny'))
+            isBoolean: typeof isDay === 'boolean'
         });
-        
+
         // First check if it's night and clear weather
         if (!isDay && (condition.includes('clear') || condition.includes('sunny'))) {
-            console.log('→ Decision: Clear night - showing night video');
+            console.log('Clear night - showing night video');
             return nightVideo;
         }
-        
-        // Then handle all weather conditions regardless of time
+
+        // Handle weather conditions
         if (condition.includes('thunder') || condition.includes('storm')) {
-            console.log('→ Decision: Storm conditions - showing lightning video');
+            console.log('Storm conditions - showing lightning video');
             return lightningVideo;
         } else if (condition.includes('rain') || condition.includes('drizzle')) {
-            console.log('→ Decision: Rain conditions - showing rain video');
+            console.log('Rain conditions - showing rain video');
             return rainVideo;
         } else if (condition.includes('snowfall') || condition.includes('sleet')) {
-            console.log('→ Decision: Snow conditions - showing snow video');
+            console.log('Snow conditions - showing snow video');
             return snowVideo;
-        } else if (condition.includes('cloud') || condition.includes('overcast') || 
-                   condition.includes('mist') || condition.includes('fog') || 
-                   condition.includes('haze')) {
-            console.log('→ Decision: Cloudy conditions - showing cloudy video');
+        } else if (isDay && (condition.includes('partly cloudy') || condition.includes('scattered clouds'))) {
+            console.log('Partly cloudy day - showing partly cloudy video');
+            return partlyCloudyVideo;
+        } else if (condition.includes('overcast') || 
+                  (condition.includes('cloudy') && !condition.includes('partly')) || 
+                  condition.includes('mist') || 
+                  condition.includes('fog') || 
+                  condition.includes('haze')) {
+            console.log('Cloudy/overcast conditions - showing cloudy video');
             return cloudyVideo;
         }
-        
+
         // For clear day conditions
         if (isDay) {
-            console.log('→ Decision: Clear day - showing day video');
+            console.log('Clear day - showing day video');
             return clearVideo;
         }
-        
+
         // Default to night video at night, day video during day
-        console.log(`→ Decision: Default - showing ${!isDay ? 'night' : 'day'} video`);
         return !isDay ? nightVideo : clearVideo;
     };
 
