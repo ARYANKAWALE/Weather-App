@@ -5,6 +5,7 @@ import Loading from './components/Loading'
 import VideoBackground from './components/VideoBackground'
 import axios from 'axios'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
+import { Analytics } from "@vercel/analytics/react"
 
 function WeatherApp() {
   const theme = useTheme();
@@ -312,6 +313,7 @@ function App() {
   return (
     <ThemeProvider>
       <WeatherApp />
+      <Analytics />
     </ThemeProvider>
   );
 }
