@@ -85,21 +85,21 @@ const VideoBackground = ({ weatherCondition, isDay }) => {
     }, []);
 
     return (
-        <div className="fixed top-0 left-0 w-full h-full -z-10 bg-black">
+        <div className="fixed inset-0 w-screen h-screen overflow-hidden -z-10">
             {currentVideo && (
-                <div className={`transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                <div className={`absolute inset-0 w-full h-full transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
                     <video
-                        key={currentVideo} // Key prop ensures video reloads when source changes
+                        key={currentVideo}
                         autoPlay
                         loop
                         muted
                         playsInline
-                        className="w-full h-full object-cover"
+                        className="absolute top-0 left-0 w-full h-full object-cover"
                         src={currentVideo}
                     />
                 </div>
             )}
-            <div className="absolute inset-0 bg-black/30" /> {/* Overlay to ensure text readability */}
+            <div className="absolute inset-0 bg-black/40" /> {/* Darker overlay for better contrast */}
         </div>
     );
 };

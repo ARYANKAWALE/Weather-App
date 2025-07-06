@@ -60,17 +60,17 @@ function WeatherApp() {
           q: query
         }
       })
-      
+
       if (response.data && Array.isArray(response.data)) {
         // Remove duplicates and limit to 5 suggestions
         const uniqueSuggestions = response.data
-          .filter((item, index, self) => 
+          .filter((item, index, self) =>
             index === self.findIndex(t => t.name === item.name && t.country === item.country)
           )
           .slice(0, 5)
-        
+
         setSuggestions(uniqueSuggestions)
-        
+
         // Show "no matches" message only if query is 5 or more characters
         if (query.length >= 5 && uniqueSuggestions.length === 0) {
           setError('No matching cities found. Try a different city name')
@@ -98,7 +98,7 @@ function WeatherApp() {
   const handleCityChange = (e) => {
     const value = e.target.value
     setCity(value)
-    
+
     // Clear previous timeout
     if (debounceTimeout.current) {
       clearTimeout(debounceTimeout.current)
@@ -213,7 +213,7 @@ function WeatherApp() {
           fetchData(query)
         },
         (error) => {
-          switch(error.code) {
+          switch (error.code) {
             case error.PERMISSION_DENIED:
               setError('Location access denied. Please allow location access or search by city name')
               break;
@@ -251,16 +251,13 @@ function WeatherApp() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 relative">
       {weatherData && <VideoBackground
         weatherCondition={weatherData.current.condition.text}
         isDay={!isNightTime(weatherData.location.localtime)}
       />}
-      <div className="backdrop-blur-md bg-black/30 shadow-xl rounded-2xl w-full max-w-md p-6 transition-all duration-500">
+      <div className="backdrop-blur-xl bg-black/40 shadow-2xl rounded-2xl w-full max-w-md p-6 transition-all duration-500 border border-white/10">
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-              <p className="text-2xl font-bold text-gray-100">Search Weather</p>
-          </div>
           <div className="flex items-center justify-between mb-2">
             <div className="flex gap-2 flex-1">
               <div ref={searchRef} className="relative flex-1">
@@ -304,7 +301,7 @@ function WeatherApp() {
               >
                 <FaMapMarkerAlt className={theme.icon} />
               </button>
-              <button 
+              <button
                 onClick={() => fetchData(city)}
                 className={`px-4 py-2 ${theme.button} rounded-lg transition-colors duration-200 backdrop-blur-md`}
                 title="Search"
