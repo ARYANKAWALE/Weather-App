@@ -15,11 +15,13 @@ function WeatherApp() {
   const [city, setCity] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [error, setError] = useState('')
   const [weatherData, setWeatherData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [useCelsius, setUseCelsius] = useState(true)
   const searchRef = useRef(null)
+  const debounceTimeout = useRef(null)
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -32,12 +34,17 @@ function WeatherApp() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Fetch suggestions
+  // Fetch suggestions with optimized debouncing
   const fetchSuggestions = async (query) => {
-    if (!query.trim()) {
+    if (!query.trim() || query.length < 2) {
       setSuggestions([])
+      setShowSuggestions(false)
       return
     }
+
+    setSuggestionsLoading(true)
+    setError('')
+
     try {
       const response = await axios.get(`https://api.weatherapi.com/v1/search.json`, {
         params: {
@@ -45,31 +52,73 @@ function WeatherApp() {
           q: query
         }
       })
-      setSuggestions(response.data)
-      setShowSuggestions(true)
+      
+      if (response.data && Array.isArray(response.data)) {
+        // Remove duplicates and limit to 5 suggestions
+        const uniqueSuggestions = response.data
+          .filter((item, index, self) => 
+            index === self.findIndex(t => t.name === item.name && t.country === item.country)
+          )
+          .slice(0, 5)
+        
+        setSuggestions(uniqueSuggestions)
+        setShowSuggestions(true)
+      } else {
+        setSuggestions([])
+        setShowSuggestions(false)
+      }
     } catch (err) {
       console.error('Failed to fetch suggestions:', err)
       setSuggestions([])
+      setShowSuggestions(false)
+      setError('Failed to fetch suggestions')
+    } finally {
+      setSuggestionsLoading(false)
     }
   }
 
-  // Debounce search input
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (city.length >= 2) {
-        fetchSuggestions(city)
+  // Optimized debounce effect
+  const handleCityChange = (e) => {
+    const value = e.target.value
+    setCity(value)
+    
+    // Clear previous timeout
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current)
+    }
+
+    // Set new timeout
+    debounceTimeout.current = setTimeout(() => {
+      if (value.length >= 2) {
+        fetchSuggestions(value)
       } else {
         setSuggestions([])
+        setShowSuggestions(false)
       }
     }, 300)
+  }
 
-    return () => clearTimeout(timeoutId)
-  }, [city])
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current)
+      }
+    }
+  }, [])
 
   const handleSuggestionClick = (suggestion) => {
     setCity(suggestion.name)
     setShowSuggestions(false)
+    setSuggestions([])
     fetchData(suggestion.name)
+  }
+
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter') {
+      setShowSuggestions(false)
+      fetchData(city)
+    }
   }
 
   const isNightTime = (localtime) => {
@@ -182,16 +231,22 @@ function WeatherApp() {
                   <input
                     type="text"
                     placeholder="Enter City Name"
-                    onChange={(e) => setCity(e.target.value)}
+                    onChange={handleCityChange}
+                    onKeyDown={handleKeyPress}
                     value={city}
                     className={`ml-2 w-full bg-transparent focus:outline-none ${theme.text} placeholder:${theme.textSecondary}`}
                   />
+                  {suggestionsLoading && (
+                    <div className="animate-spin text-gray-400">
+                      <FaSearch className="w-4 h-4" />
+                    </div>
+                  )}
                 </div>
                 {showSuggestions && suggestions.length > 0 && (
                   <div className="absolute w-full mt-1 bg-black/80 backdrop-blur-md rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
                     {suggestions.map((suggestion) => (
                       <div
-                        key={`${suggestion.id}-${suggestion.name}`}
+                        key={`${suggestion.id}-${suggestion.name}-${suggestion.country}`}
                         onClick={() => handleSuggestionClick(suggestion)}
                         className={`px-4 py-2 cursor-pointer ${theme.text} hover:bg-white/10 transition-colors duration-200`}
                       >
@@ -319,3 +374,4 @@ function App() {
 }
 
 export default App
+
