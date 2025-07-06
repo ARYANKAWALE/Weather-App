@@ -106,22 +106,22 @@ const HourlyForecast = ({ weatherData, theme, timezone }) => {
                     return (
                     <div key={`${hour.time}-${index}`} 
                          data-current={isCurrent}
-                         className={`flex flex-col items-center ${isCurrent ? 'bg-blue-500/40' : 'bg-black/20'} 
-                                  hover:bg-black/40 transition-all duration-200 py-3 rounded-lg px-6 
-                                  min-w-[120px] backdrop-blur-sm ${isCurrent ? 'border-2 border-blue-400' : ''}`}>
-                        <p className='text-white font-medium'>{formatTime(hour.time)}</p>
+                         className={`flex flex-col items-center ${isCurrent ? 'bg-blue-500/20' : 'bg-white/5'} 
+                                  hover:bg-white/10 transition-all duration-300 py-3 rounded-xl px-6 
+                                  min-w-[120px] backdrop-blur-md shadow-lg ${isCurrent ? 'border border-white/20' : 'border border-white/5'}`}>
+                        <p className='text-white/90 font-medium'>{formatTime(hour.time)}</p>
                         <img src={hour.condition.icon} 
                              alt={hour.condition.text} 
                              className="w-12 h-12 my-2 drop-shadow-lg" />
-                        <p className='text-xl font-bold text-white'>{hour.temp_c}°C</p>
+                        <p className='text-xl font-bold text-white/90'>{hour.temp_c}°C</p>
                         <div className="mt-2 space-y-1">
                             <div className="flex items-center gap-1">
-                                <FaCloudRain className="w-3 h-3 text-blue-300" />
-                                <span className="text-sm text-gray-200">{hour.chance_of_rain}%</span>
+                                <FaCloudRain className="w-3 h-3 text-blue-300/90" />
+                                <span className="text-sm text-white/80">{hour.chance_of_rain}%</span>
                             </div>
                             <div className="flex items-center gap-1">
-                                <FaWind className="w-3 h-3 text-blue-300" />
-                                <span className="text-sm text-gray-200">{hour.wind_kph} km/h</span>
+                                <FaWind className="w-3 h-3 text-blue-300/90" />
+                                <span className="text-sm text-white/80">{hour.wind_kph} km/h</span>
                             </div>
                         </div>
                     </div>

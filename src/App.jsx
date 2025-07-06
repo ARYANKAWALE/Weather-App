@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { FaMapMarkerAlt, FaSearch, FaWind, FaTint, FaCloud, FaSun, FaExchangeAlt, FaMoon, FaAccessibleIcon, FaAngleDoubleRight } from 'react-icons/fa'
+import { FaMapMarkerAlt, FaSearch, FaWind, FaTint, FaCloud, FaSun, FaExchangeAlt, FaMoon, FaAccessibleIcon, FaAngleDoubleRight, FaUpload, FaCircle } from 'react-icons/fa'
 import HourlyForecast from './components/HourlyForecast'
 import Loading from './components/Loading'
 import VideoBackground from './components/VideoBackground'
 import axios from 'axios'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { Analytics } from "@vercel/analytics/react"
+import { FaSpinner } from 'react-icons/fa6'
 
 function WeatherApp() {
   const theme = useTheme();
@@ -36,9 +37,16 @@ function WeatherApp() {
 
   // Fetch suggestions with optimized debouncing
   const fetchSuggestions = async (query) => {
-    if (!query.trim() || query.length < 2) {
+    if (!query.trim()) {
       setSuggestions([])
       setShowSuggestions(false)
+      return
+    }
+
+    if (query.length < 2) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      setError('Please enter at least 2 characters to search')
       return
     }
 
@@ -62,16 +70,25 @@ function WeatherApp() {
           .slice(0, 5)
         
         setSuggestions(uniqueSuggestions)
-        setShowSuggestions(true)
+        
+        // Show "no matches" message only if query is 5 or more characters
+        if (query.length >= 5 && uniqueSuggestions.length === 0) {
+          setError('No matching cities found. Try a different city name')
+          setShowSuggestions(false)
+        } else {
+          setError('')
+          setShowSuggestions(uniqueSuggestions.length > 0)
+        }
       } else {
         setSuggestions([])
         setShowSuggestions(false)
+        setError('No results found')
       }
     } catch (err) {
       console.error('Failed to fetch suggestions:', err)
       setSuggestions([])
       setShowSuggestions(false)
-      setError('Failed to fetch suggestions')
+      setError('Unable to search cities. Please check your connection')
     } finally {
       setSuggestionsLoading(false)
     }
@@ -134,6 +151,11 @@ function WeatherApp() {
   }
 
   const fetchData = async (query) => {
+    if (!query || query.trim() === '') {
+      setError('Please enter a city name')
+      return
+    }
+
     setLoading(true)
     setError('')
     try {
@@ -151,7 +173,6 @@ function WeatherApp() {
         return;
       } catch (directError) {
         console.log('Direct API call failed, trying with CORS proxy...');
-        // If direct call fails, try with CORS proxy
         const response = await axios.get(`${cors_proxy}${api_url}`, {
           params: {
             key: api_key,
@@ -168,11 +189,13 @@ function WeatherApp() {
     } catch (err) {
       console.error('API Error:', err);
       if (err.response?.status === 400) {
-        setError('City not found. Please try a different city name.')
+        setError('City not found. Please check spelling and try again')
       } else if (err.response?.status === 403) {
-        setError('Access to weather data is restricted. Please try again later.')
+        setError('Weather service unavailable. Please try again later')
+      } else if (err.response?.status === 429) {
+        setError('Too many requests. Please wait a moment')
       } else {
-        setError('Unable to fetch weather data. Please try again.')
+        setError('Unable to get weather data. Please try again')
       }
       setWeatherData(null)
     } finally {
@@ -190,12 +213,24 @@ function WeatherApp() {
           fetchData(query)
         },
         (error) => {
-          setError(error.message)
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              setError('Location access denied. Please allow location access or search by city name')
+              break;
+            case error.POSITION_UNAVAILABLE:
+              setError('Unable to get location. Please search by city name')
+              break;
+            case error.TIMEOUT:
+              setError('Location request timed out. Please try again or search by city name')
+              break;
+            default:
+              setError('Location error. Please search by city name')
+          }
           setLoading(false)
         }
       )
     } else {
-      setError("Geolocation is not supported by this browser.")
+      setError("Location not supported. Please search by city name")
     }
   }
 
@@ -223,10 +258,13 @@ function WeatherApp() {
       />}
       <div className="backdrop-blur-md bg-black/30 shadow-xl rounded-2xl w-full max-w-md p-6 transition-all duration-500">
         <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+              <p className="text-2xl font-bold text-gray-100">Search Weather</p>
+          </div>
           <div className="flex items-center justify-between mb-2">
             <div className="flex gap-2 flex-1">
               <div ref={searchRef} className="relative flex-1">
-                <div className={`flex items-center ${theme.input} rounded-lg px-4 py-2 backdrop-blur-sm`}>
+                <div className={`flex items-center ${theme.input} rounded-lg px-4 py-2 backdrop-blur-md`}>
                   <FaSearch className={theme.icon} />
                   <input
                     type="text"
@@ -237,8 +275,8 @@ function WeatherApp() {
                     className={`ml-2 w-full bg-transparent focus:outline-none ${theme.text} placeholder:${theme.textSecondary}`}
                   />
                   {suggestionsLoading && (
-                    <div className="animate-spin text-gray-400">
-                      <FaSearch className="w-4 h-4" />
+                    <div className="text-gray-400">
+                      <FaSpinner className="w-4 h-4 animate-spin" />
                     </div>
                   )}
                 </div>
@@ -261,14 +299,14 @@ function WeatherApp() {
               </div>
               <button
                 onClick={getCurruntLocation}
-                className={`px-4 py-2 ${theme.button} rounded-lg transition-colors duration-200 backdrop-blur-sm`}
+                className={`px-4 py-2 ${theme.button} rounded-lg transition-colors duration-200 backdrop-blur-md`}
                 title="Get Current Location"
               >
                 <FaMapMarkerAlt className={theme.icon} />
               </button>
               <button 
                 onClick={() => fetchData(city)}
-                className={`px-4 py-2 ${theme.button} rounded-lg transition-colors duration-200 backdrop-blur-sm`}
+                className={`px-4 py-2 ${theme.button} rounded-lg transition-colors duration-200 backdrop-blur-md`}
                 title="Search"
               >
                 <FaAngleDoubleRight className={theme.icon} />

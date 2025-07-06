@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import clearVideo from '../assets/images/videos/Day.mp4';
 import cloudyVideo from '../assets/images/videos/Cloudy.mp4';
 import lightningVideo from '../assets/images/videos/lightining.mp4';
@@ -7,6 +8,11 @@ import nightVideo from '../assets/images/videos/Night.mp4';
 import partlyCloudyVideo from '../assets/images/videos/PartlyCloudy.mp4';
 
 const VideoBackground = ({ weatherCondition, isDay }) => {
+    const [currentVideo, setCurrentVideo] = useState(null);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const previousCondition = useRef(weatherCondition);
+    const previousIsDay = useRef(isDay);
+
     const getVideoSource = () => {
         const condition = weatherCondition?.toLowerCase() || '';
 
@@ -55,16 +61,44 @@ const VideoBackground = ({ weatherCondition, isDay }) => {
         return !isDay ? nightVideo : clearVideo;
     };
 
+    useEffect(() => {
+        // Only trigger transition if weather condition or day/night status changes
+        if (previousCondition.current !== weatherCondition || previousIsDay.current !== isDay) {
+            setIsTransitioning(true);
+            
+            // Update the video after fade out
+            setTimeout(() => {
+                setCurrentVideo(getVideoSource());
+                setIsTransitioning(false);
+            }, 200); // Match this with CSS transition duration
+        }
+
+        previousCondition.current = weatherCondition;
+        previousIsDay.current = isDay;
+    }, [weatherCondition, isDay]);
+
+    // Set initial video
+    useEffect(() => {
+        if (!currentVideo) {
+            setCurrentVideo(getVideoSource());
+        }
+    }, []);
+
     return (
-        <div className="fixed top-0 left-0 w-full h-full -z-10">
-            <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-                src={getVideoSource()}
-            />
+        <div className="fixed top-0 left-0 w-full h-full -z-10 bg-black">
+            {currentVideo && (
+                <div className={`transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                    <video
+                        key={currentVideo} // Key prop ensures video reloads when source changes
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                        src={currentVideo}
+                    />
+                </div>
+            )}
             <div className="absolute inset-0 bg-black/30" /> {/* Overlay to ensure text readability */}
         </div>
     );
